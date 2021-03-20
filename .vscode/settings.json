@@ -1,0 +1,9 @@
+{
+    "python.pythonPath": "/Library/Frameworks/Python.framework/Versions/3.7/bin/python3.7",
+    "json.schemas": [
+    
+    ],
+    "python.linting.pycodestyleEnabled": true,
+    "python.linting.enabled": true
+
+}
