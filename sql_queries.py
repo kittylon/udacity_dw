@@ -8,7 +8,7 @@ config.read('dwh.cfg')
 # DROP TABLES
 
 staging_events_table_drop = "DROP TABLE IF EXISTS staging_events"
-staging_songs_table_drop = "DROP TABLE IF EXISTS songs_table"
+staging_songs_table_drop = "DROP TABLE IF EXISTS staging_songs"
 songplay_table_drop = "DROP TABLE IF EXISTS songplay"
 user_table_drop = "DROP TABLE IF EXISTS users"
 song_table_drop = "DROP TABLE IF EXISTS song"
@@ -32,7 +32,7 @@ staging_events_table_create= ("""CREATE TABLE IF NOT EXISTS staging_events(artis
                                                                             sessionId INT,
                                                                             song VARCHAR(MAX),
                                                                             status INT,
-                                                                            ts NUMERIC,
+                                                                            ts TIMESTAMP,
                                                                             userAgent VARCHAR(MAX),
                                                                             userId INT)
 """)
@@ -107,30 +107,69 @@ staging_songs_copy = ("""   COPY staging_songs(num_songs, artist_id, artist_lati
                                             artist_name, song_id, title, duration, year)
                             FROM 's3://udacity-dend/song_data'
                             iam_role 'arn:aws:iam::575106810476:role/dwhRole'
-                            region 'us-west-2
-                            FILLRECORD;
+                            region 'us-west-2'
+                            FILLRECORD
+                            IGNOREHEADER 1;
 """)
 
 # FINAL TABLES
 
-songplay_table_insert = ("""INSERT INTO songplay (songplay_id, start_time, user_id, level, song_id, artist_id, session_id, location, user_agent)
-                                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+songplay_table_insert = ("""INSERT INTO songplay(start_time, user_id, level, song_id, artist_id, session_id, location, user_agent)
+                            SELECT DISTINCT
+                            event.ts,
+                            event.userId,
+                            event.level,
+                            songs.song_id, 
+                            songs.artist_id,
+                            event.sessionId,
+                            event.location,
+                            event.userAgent
+                            FROM staging_events AS event
+                            LEFT JOIN staging_songs AS songs ON event.song = songs.title
+                            WHERE event.page = 'NextSong'
+
 """)
 
-user_table_insert = (""""INSERT INTO users(user_id, first_name, last_name, gender, level)
-                                     VALUES(%s, %s, %s, %s, %s)
+user_table_insert = ("""INSERT INTO users(user_id, first_name, last_name, gender, level)
+                        SELECT DISTINCT 
+                            userId,
+                            firstName,
+                            lastName,
+                            gender,
+                            level
+                        FROM staging_events
 """)
 
 song_table_insert = ("""INSERT INTO song(song_id, title, artist_id, year, duration)
-                                  VALUES(%s, %s, %s, %s, %s)
+                        SELECT DISTINCT 
+                                song_id,
+                                title,
+                                artist_id,
+                                year,
+                                duration
+                            FROM staging_songs
 """)
 
-artist_table_insert = ("""INSERT INTO artist(artist_id, name, location, lattitude, longitude)
-                                      VALUES(%s, %s, %s, %s, %s)
+artist_table_insert =   ("""INSERT INTO artist(artist_id, name, location, lattitude, longitude)
+                            SELECT DISTINCT 
+                                artist_id,
+                                artist_name,
+                                artist_location,
+                                artist_latitude,
+                                artist_longitude
+                            FROM staging_songs
 """)
 
 time_table_insert = ("""INSERT INTO time(start_time, hour, day, week, month, year, weekday)
-                                    VALUES(%s, %s, %s, %s, %s, %s, %s)
+                        SELECT DISTINCT 
+                            ts,
+                            EXTRACT(hour FROM ts),
+                            EXTRACT(day FROM ts),
+                            EXTRACT(week FROM ts),
+                            EXTRACT(month FROM ts),
+                            EXTRACT(year FROM ts),
+                            date_part(dow, ts)
+                        FROM staging_events
 """)
 
 # QUERY LISTS

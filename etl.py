@@ -12,6 +12,7 @@ def load_staging_tables(cur, conn):
 
 def insert_tables(cur, conn):
     for query in insert_table_queries:
+        print(query)
         cur.execute(query)
         conn.commit()
 
@@ -23,7 +24,7 @@ def main():
     conn = psycopg2.connect("host={} dbname={} user={} password={} port={}".format(*config['CLUSTER'].values()))
     cur = conn.cursor()
     
-    load_staging_tables(cur, conn)
+    # load_staging_tables(cur, conn)
     insert_tables(cur, conn)
 
     conn.close()
