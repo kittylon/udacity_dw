@@ -32,15 +32,15 @@ staging_events_table_create= ("""CREATE TABLE IF NOT EXISTS staging_events(artis
                                                                             sessionId INT,
                                                                             song VARCHAR(MAX),
                                                                             status INT,
-                                                                            ts TIMESTAMP,
+                                                                            ts NUMERIC,
                                                                             userAgent VARCHAR(MAX),
                                                                             userId INT)
 """)
 
 staging_songs_table_create = ("""CREATE TABLE IF NOT EXISTS staging_songs(num_songs INT,
                                                                         artist_id VARCHAR(MAX),
-                                                                        artist_latitude VARCHAR(MAX),
-                                                                        artist_longitude INT,
+                                                                        artist_latitude NUMERIC,
+                                                                        artist_longitude NUMERIC,
                                                                         artist_location VARCHAR(MAX),
                                                                         artist_name VARCHAR(MAX),
                                                                         song_id VARCHAR(MAX),
@@ -49,7 +49,7 @@ staging_songs_table_create = ("""CREATE TABLE IF NOT EXISTS staging_songs(num_so
                                                                         year INT)
 """)
 
-songplay_table_create = ("""CREATE TABLE IF NOT EXISTS songplay(songplay_id INT PRIMARY KEY,
+songplay_table_create = ("""CREATE TABLE IF NOT EXISTS songplay(songplay_id INT PRIMARY KEY IDENTITY(1, 1),
                                                                 start_time timestamp NOT NULL,
                                                                 user_id INT NOT NULL,
                                                                 level VARCHAR,
@@ -83,7 +83,7 @@ artist_table_create = ("""CREATE TABLE IF NOT EXISTS artist(artist_id VARCHAR PR
                                                             longitude NUMERIC)
 """)
 
-time_table_create = ("""CREATE TABLE IF NOT EXISTS time(start_time timestamp PRIMARY KEY,
+time_table_create = ("""CREATE TABLE IF NOT EXISTS time(start_time timestamp,
                                                         hour INT,
                                                         day INT,
                                                         week INT,
@@ -100,7 +100,8 @@ staging_events_copy = ("""  COPY staging_events(artist, auth, firstName, gender,
                             FROM 's3://udacity-dend/log_data'
                             iam_role 'arn:aws:iam::575106810476:role/dwhRole'
                             region 'us-west-2'
-                            FILLRECORD;
+                            format as json 'auto'
+                            dateformat 'auto';
 """)
 
 staging_songs_copy = ("""   COPY staging_songs(num_songs, artist_id, artist_latitude, artist_longitude, artist_location,
@@ -108,15 +109,14 @@ staging_songs_copy = ("""   COPY staging_songs(num_songs, artist_id, artist_lati
                             FROM 's3://udacity-dend/song_data'
                             iam_role 'arn:aws:iam::575106810476:role/dwhRole'
                             region 'us-west-2'
-                            FILLRECORD
-                            IGNOREHEADER 1;
+                            format as json 'auto';
 """)
 
 # FINAL TABLES
 
 songplay_table_insert = ("""INSERT INTO songplay(start_time, user_id, level, song_id, artist_id, session_id, location, user_agent)
                             SELECT DISTINCT
-                            event.ts,
+                            TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second',
                             event.userId,
                             event.level,
                             songs.song_id, 
@@ -138,6 +138,7 @@ user_table_insert = ("""INSERT INTO users(user_id, first_name, last_name, gender
                             gender,
                             level
                         FROM staging_events
+                        WHERE userId IS NOT NULL
 """)
 
 song_table_insert = ("""INSERT INTO song(song_id, title, artist_id, year, duration)
@@ -147,7 +148,9 @@ song_table_insert = ("""INSERT INTO song(song_id, title, artist_id, year, durati
                                 artist_id,
                                 year,
                                 duration
-                            FROM staging_songs
+                        FROM staging_songs
+                        WHERE song_id IS NOT NULL
+
 """)
 
 artist_table_insert =   ("""INSERT INTO artist(artist_id, name, location, lattitude, longitude)
@@ -158,17 +161,18 @@ artist_table_insert =   ("""INSERT INTO artist(artist_id, name, location, lattit
                                 artist_latitude,
                                 artist_longitude
                             FROM staging_songs
+                            WHERE artist_id IS NOT NULL
 """)
 
 time_table_insert = ("""INSERT INTO time(start_time, hour, day, week, month, year, weekday)
                         SELECT DISTINCT 
-                            ts,
-                            EXTRACT(hour FROM ts),
-                            EXTRACT(day FROM ts),
-                            EXTRACT(week FROM ts),
-                            EXTRACT(month FROM ts),
-                            EXTRACT(year FROM ts),
-                            date_part(dow, ts)
+                            TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second' as start_time,
+                            EXTRACT(hour FROM start_time),
+                            EXTRACT(day FROM start_time),
+                            EXTRACT(week FROM start_time),
+                            EXTRACT(month FROM start_time),
+                            EXTRACT(year FROM start_time),
+                            date_part(dow, start_time)
                         FROM staging_events
 """)
 

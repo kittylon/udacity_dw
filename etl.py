@@ -4,25 +4,37 @@ from sql_queries import copy_table_queries, insert_table_queries
 
 
 def load_staging_tables(cur, conn):
+    """
+    Loads song and log data from S3 into the staging tables
+    """
     for query in copy_table_queries:
         cur.execute(query)
         conn.commit()
 
 
 def insert_tables(cur, conn):
+    """
+    Populates the fact and dimension tables from tha staging tables
+    """
     for query in insert_table_queries:
+        print(query)
         cur.execute(query)
         conn.commit()
 
 
 def main():
+    """
+    Reads settings from the dwh.cfg file, necessaries for creating 
+    a database connection and a cursor, wich will be used to interact
+    through queries to the redshift cluster
+    """
     config = configparser.ConfigParser()
     config.read('dwh.cfg')
 
     conn = psycopg2.connect("host={} dbname={} user={} password={} port={}".format(*config['CLUSTER'].values()))
     cur = conn.cursor()
     
-    # load_staging_tables(cur, conn)
+    load_staging_tables(cur, conn)
     insert_tables(cur, conn)
 
     conn.close()
