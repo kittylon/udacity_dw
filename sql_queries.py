@@ -94,13 +94,11 @@ time_table_create = ("""CREATE TABLE IF NOT EXISTS time(start_time timestamp,
 
 # STAGING TABLES
 
-staging_events_copy = ("""  COPY staging_events(artist, auth, firstName, gender, itemInSession, lastName,
-                                                length, level, location, method, page, registration, sessionId, song,
-                                                status, ts, userAgent, userId)
+staging_events_copy = ("""  COPY staging_events
                             FROM 's3://udacity-dend/log_data'
                             iam_role 'arn:aws:iam::575106810476:role/dwhRole'
-                            region 'us-west-2'
-                            format as json 'auto'
+                            region 'us-west-2'                            
+                            format json as 's3://udacity-dend/log_json_path.json'
                             dateformat 'auto';
 """)
 
