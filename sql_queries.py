@@ -137,7 +137,7 @@ user_table_insert = ("""INSERT INTO users(user_id, first_name, last_name, gender
                             level
                         FROM staging_events
                         WHERE userId IS NOT NULL
-                        AND event.page = 'NextSong'
+                        AND page = 'NextSong'
 
 """)
 
@@ -174,7 +174,7 @@ time_table_insert = ("""INSERT INTO time(start_time, hour, day, week, month, yea
                             EXTRACT(year FROM start_time),
                             date_part(dow, start_time)
                         FROM staging_events
-                        WHERE event.page = 'NextSong'
+                        WHERE page = 'NextSong'
 
 """)
 
